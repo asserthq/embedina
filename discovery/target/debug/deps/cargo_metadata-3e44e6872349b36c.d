@@ -1,0 +1,11 @@
+/home/lynx/dev/embedina/discovery/target/debug/deps/cargo_metadata-3e44e6872349b36c.d: /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/lib.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/dependency.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/diagnostic.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/errors.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/messages.rs
+
+/home/lynx/dev/embedina/discovery/target/debug/deps/libcargo_metadata-3e44e6872349b36c.rlib: /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/lib.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/dependency.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/diagnostic.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/errors.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/messages.rs
+
+/home/lynx/dev/embedina/discovery/target/debug/deps/libcargo_metadata-3e44e6872349b36c.rmeta: /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/lib.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/dependency.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/diagnostic.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/errors.rs /home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/messages.rs
+
+/home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/lib.rs:
+/home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/dependency.rs:
+/home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/diagnostic.rs:
+/home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/errors.rs:
+/home/lynx/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/cargo_metadata-0.13.1/src/messages.rs:

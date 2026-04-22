@@ -1,0 +1,6 @@
+cargo:rerun-if-changed=build.rs
+cargo:rerun-if-changed=src/gen/build.rs
+cargo:rustc-check-cfg=cfg(semihosting_no_asm,semihosting_no_duration_checked_float,semihosting_no_error_in_core,semihosting_no_strict_provenance,semihosting_target_feature)
+cargo:rustc-check-cfg=cfg(semihosting_target_feature,values("mclass","thumb-mode"))
+cargo:rustc-cfg=semihosting_target_feature="mclass"
+cargo:rustc-cfg=semihosting_target_feature="thumb-mode"

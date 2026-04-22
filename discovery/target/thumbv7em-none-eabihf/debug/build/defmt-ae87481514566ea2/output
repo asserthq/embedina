@@ -1,0 +1,3 @@
+cargo:rustc-link-search=/home/lynx/dev/embedina/discovery/target/thumbv7em-none-eabihf/debug/build/defmt-ae87481514566ea2/out
+cargo:rustc-check-cfg=cfg(c_variadic)
+cargo:rustc-check-cfg=cfg(no_cas)

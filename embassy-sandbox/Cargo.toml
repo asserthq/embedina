@@ -1,0 +1,52 @@
+[package]
+# TODO(1) fix `authors` and `name` if you didn't use `cargo-generate`
+authors = ["asserthq <sanya2003ogorodov@gmail.com>"]
+name = "embassy-sandbox"
+edition = "2024"
+version = "0.1.0"
+
+
+# To run all the tests via `cargo test` the tests need to be explicitly disabled for the binary targets
+# If you use a standard main.rs file the following is sufficient:
+# [[bin]]
+# name = "embedina"
+# test = false
+
+[[bin]]
+name = "embassy"
+test = false
+
+[[bin]]
+name = "lora_send"
+test = false
+
+[lib]
+harness = false
+
+# needed for each integration test
+[[test]]
+name = "integration"
+harness = false
+
+[dependencies]
+# COMMON
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+defmt = "1.0"
+defmt-rtt = "1.0"
+panic-probe = { version = "1.0", features = ["print-defmt"] }
+semihosting = "0.1.20"
+embedded-hal-bus = "0.3.0"
+
+# LORA
+#lora-phy = { version = "3.0.1" , features = ["lorawan-radio"] }
+#lorawan-device = { version = "0.12.2", default-features = false, features = ["embassy-time", "defmt"] }
+# EMBASSY
+embassy-executor = { version = "0.10.0", features = ["platform-cortex-m", "executor-thread"] }
+# STM32 EMBASSY
+embassy-stm32 = { version = "0.6.0", features = ["stm32f303vc", "defmt", "time", "time-driver-any", "memory-x"] }
+embassy-time = { version = "0.5.1", features = ["defmt", "defmt-timestamp-uptime"] }
+
+
+[dev-dependencies]
+defmt-test = "0.3"

@@ -1,0 +1,2 @@
+cargo:rustc-link-search=/home/lynx/dev/embedina/discovery/target/thumbv7em-none-eabihf/debug/build/stm32f3-discovery-67f1cc5733aa523e/out
+cargo:rerun-if-changed=memory.x

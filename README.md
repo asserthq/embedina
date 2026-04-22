@@ -1,232 +1,202 @@
-# `app-template`
+## Assistant
 
-> Quickly set up a [`probe-rs`] + [`defmt`] + [`flip-link`] embedded project
+Вот обзор текущего дерева проекта, комментарии по тому, что в нём находится, и практичные рекомендации — куда положить что, чтобы `embedina` оставался общей инфраструктурой, а прототипы жили в подпроектах/examples. Внизу — конкретные команды для реорганизации (создать подпроекты, превратить `src/adcs` в отдельный crate, обновить workspace и т.д.).
 
-[`probe-rs`]: https://crates.io/crates/probe-rs
-[`defmt`]: https://github.com/knurling-rs/defmt
-[`flip-link`]: https://github.com/knurling-rs/flip-link
+1) Текущее дерево (главные элементы)
+- В корне:
+  - `Cargo.toml` — корневой манифест (пока содержит `[[bin]]` для `adcs` и зависимости).
+  - `.cargo/config.toml` — runner/target/rustflags для probe-rs + flip-link.
+  - `README.md`, лицензии и настройки редактора.
+  - `examples/` — демонстрационные примеры (`hello`, `levels`, `bitfield`, ...).
+  - `src/` — содержит `src/lib.rs` (общая библиотека `embedina`) и `src/adcs/main.rs` (сейчас это отдельный бинарник в `src`).
+  - `tests/` — интеграционные тесты.
 
-## Dependencies
-
-### 1. `flip-link`:
-
-```bash
-cargo install flip-link
+Конкретно — см. `Cargo.toml` (пакет/зависимости):
+```/home/lynx/dev/embedina/Cargo.toml#L1-20
+[package]
+# TODO(1) fix `authors` and `name` if you didn't use `cargo-generate`
+authors = ["asserthq <sanya2003ogorodov@gmail.com>"]
+name = "embedina"
+edition = "2024"
+version = "0.1.0"
 ```
 
-### 2. `probe-rs`:
-
-Install probe-rs by following the instructions at <https://probe.rs/docs/getting-started/installation/>.
-
-### 3. [`cargo-generate`]:
-
-```bash
-cargo install cargo-generate
+Зависимости и HAL (фрагмент):
+```/home/lynx/dev/embedina/Cargo.toml#L40-70
+[dependencies]
+cortex-m = { version = "0.7", features = ["critical-section-single-core"] }
+cortex-m-rt = "0.7"
+defmt = "1.0"
+defmt-rtt = "1.0"
+panic-probe = { version = "1.0", features = ["print-defmt"] }
+semihosting = "0.1.20"
+# TODO(4) enter your HAL here
+# some-hal = "1.2.3"
+stm32f3xx-hal = { version = "0.10.0", features = ["ld", "rt", "stm32f303xc"] }
 ```
 
-[`cargo-generate`]: https://crates.io/crates/cargo-generate
-
-> *Note:* You can also just clone this repository instead of using `cargo-generate`, but this involves additional manual adjustments.
-
-## Setup
-
-### 1. Initialize the project template
-
-```bash
-cargo generate \
-    --git https://github.com/knurling-rs/app-template \
-    --branch main \
-    --name my-app
+Runner и target (в `.cargo/config.toml`):
+```/home/lynx/dev/embedina/.cargo/config.toml#L1-20
+[target.'cfg(all(target_arch = "arm", target_os = "none"))']
+# TODO(2) replace `$CHIP` with your chip's name (see `probe-rs chip list` output)
+runner = ["probe-rs", "run", "--chip", "STM32F303VC", "--log-format=oneline"]
+...
+[build]
+target = "thumbv7em-none-eabihf"
 ```
 
-If you look into your new `my-app` folder, you'll find that there are a few `TODO`s in the files marking the properties you need to set.
+`src/lib.rs` — общая infra (panic handler, exit, HardFault handler, defmt-test harness):
+```/home/lynx/dev/embedina/src/lib.rs#L1-140
+#![no_main]
+#![no_std]
 
-Let's walk through them together now.
+use defmt_rtt as _; // global logger
 
-### 2. Set `probe-rs` chip
+// TODO(5) adjust HAL import
+// use some_hal as _; // memory layout
+use stm32f3xx_hal as _;
 
-Pick a chip from ` probe-rs chip list` and enter it into `.cargo/config.toml`.
+use panic_probe as _;
 
-If, for example, you have a nRF52840 Development Kit as used in one of [our exercises], replace `{{chip}}` with `nRF52840_xxAA`.
+#[defmt::panic_handler]
+fn panic() -> ! {
+    cortex_m::asm::udf()
+}
 
-[our workshops]: https://rust-exercises.ferrous-systems.com
+pub fn exit() -> ! {
+    semihosting::process::exit(0);
+}
 
-```diff
- # .cargo/config.toml
--runner = ["probe-rs", "run", "--chip", "$CHIP", "--log-format=oneline"]
-+runner = ["probe-rs", "run", "--chip", "nRF52840_xxAA", "--log-format=oneline"]
-```
+#[cortex_m_rt::exception]
+unsafe fn HardFault(_frame: &cortex_m_rt::ExceptionFrame) -> ! {
+    semihosting::process::exit(1);
+}
 
-### 3. Adjust the compilation target
+#[cfg(test)]
+#[defmt_test::tests]
+mod unit_tests {
+    use defmt::assert;
 
-In `.cargo/config.toml`, pick the right compilation target for your board.
-
-```diff
- # .cargo/config.toml
- [build]
--target = "thumbv6m-none-eabi"    # Cortex-M0 and Cortex-M0+
--# target = "thumbv7m-none-eabi"    # Cortex-M3
--# target = "thumbv7em-none-eabi"   # Cortex-M4 and Cortex-M7 (no FPU)
--# target = "thumbv7em-none-eabihf" # Cortex-M4F and Cortex-M7F (with FPU)
-+target = "thumbv7em-none-eabihf" # Cortex-M4F (with FPU)
-```
-
-Add the target with `rustup`.
-
-```bash
-rustup target add thumbv7em-none-eabihf
-```
-
-### 4. Add a HAL as a dependency
-
-In `Cargo.toml`, list the Hardware Abstraction Layer (HAL) for your board as a dependency.
-
-For the nRF52840 you'll want to use the [`nrf52840-hal`].
-
-[`nrf52840-hal`]: https://crates.io/crates/nrf52840-hal
-
-```diff
- # Cargo.toml
- [dependencies]
--# some-hal = "1.2.3"
-+nrf52840-hal = "0.14.0"
-```
-
-⚠️ Note for RP2040 users ⚠️
-
-You will need to not just specify the `rp-hal` HAL, but a BSP (board support crate) which includes a second stage bootloader. Please find a list of available BSPs [here](https://github.com/rp-rs/rp-hal-boards#packages).
-
-### 5. Import your HAL
-
-Now that you have selected a HAL, fix the HAL import in `src/lib.rs`
-
-```diff
- // my-app/src/lib.rs
--// use some_hal as _; // memory layout
-+use nrf52840_hal as _; // memory layout
-```
-
-### (6. Get a linker script)
-
-Some HAL crates require that you manually copy over a file called `memory.x` from the HAL to the root of your project. For nrf52840-hal, this is done automatically so no action is needed. For other HAL crates, see their documentation on where to find an example file.
-
-The `memory.x` file should look something like:
-
-```text
-MEMORY
-{
-  FLASH : ORIGIN = 0x00000000, LENGTH = 1024K
-  RAM   : ORIGIN = 0x20000000, LENGTH = 256K
+    #[test]
+    fn it_works() {
+        assert!(true)
+    }
 }
 ```
 
-The `memory.x` file is included in the `cortex-m-rt` linker script `link.x`, and so `link.x` is the one you should tell `rustc` to use (see the `.cargo/config.toml` file where we do that).
+2) Комментарии — что хорошо, что можно улучшить
 
-### 7. Run!
+Хорошо
+- У тебя есть корректная основа: `src/lib.rs` реализует общую infra (logger, panic, exit). Это именно то, что должно оставаться в корне и переиспользоваться подпроектами.
+- Примеры вынесены в `examples/` — это удобный способ держать демки.
+- `.cargo/config.toml` уже содержит удобные `runner`/`target`/`rustflags` — это помогает единообразно прошивать подпроекты.
 
-You are now all set to `cargo-run` your first `defmt`-powered application!
-There are some examples in the `src/bin` directory.
+Что стоит улучшить / структурировать
+- `src/adcs/main.rs` сейчас является бинарником, объявленным через `[[bin]]` в корневом `Cargo.toml`. Если `adcs` — большой эксперимент/прототип, лучше вынести его как отдельный подпроект (`projects/adcs`) вместо размещения под `src/`. Тогда `embedina` останется чистой общей библиотекой, а `adcs` — отдельным crate с собственным `Cargo.toml`.
+- `edition = "2024"` в `Cargo.toml` может давать проблемы на системах с нестандартным Cargo/rustup (мы уже сталкивались с этим). Я рекомендую:
+  - либо понизить `edition` до `2021` (более совместимо), либо
+  - положить `rust-toolchain.toml` в корень и фиксировать рабочий toolchain (stable/nightly) для проекта.
+- `memory.x` — если понадобятся специфичные linker regions, лучше держать шаблон `memory.x` в корне и/или в каждом подпроекте, который этого требует.
+- Подумай о `workspace` (корневой `Cargo.toml` с `[workspace]`), если собираешь множество подпроектов — это упрощает сборку всех crate’ов и CI.
 
-Start by `cargo run`-ning `my-app/src/bin/hello.rs`:
+3) Рекомендованная целевая организация (пример)
+- Корень `embedina` оставляем как библиотеку + infra + конфиги:
+  - `src/lib.rs` — общая infra
+  - `.cargo/config.toml` — runner/target
+  - `memory.x`, `defmt.x` (если нужно)
+  - `examples/` — краткие демки
+  - `projects/` — подпроекты (каждый — отдельный crate)
+  - `scripts/` — вспомогательные скрипты
 
-```console
-$ # `rb` is an alias for `run --bin`
-$ cargo rb hello
-    Finished `dev` profile [optimized + debuginfo] target(s) in 0.01s
-     Running `probe-rs run --chip nrf52840_xxaa --log-format=oneline target/thumbv6m-none-eabi/debug/hello`
-      Erasing ✔ 100% [####################]   8.00 KiB @  15.79 KiB/s (took 1s)
-  Programming ✔ 100% [####################]   8.00 KiB @  13.19 KiB/s (took 1s)                                                                                                                        Finished in 1.11s
-Hello, world!
+Пример структуры:
+- embedina/
+  - Cargo.toml (workspace)
+  - rust-toolchain.toml
+  - .cargo/config.toml
+  - src/lib.rs
+  - examples/*.rs
+  - projects/
+    - adcs/ (crate)
+    - orientation/ (crate)
+  - tests/
+  - scripts/
 
-$ echo $?
-0
+Пример `Cargo.toml` workspace (шаблон — вставляй в корень, я показываю пример в /dev/null):
+```/dev/null/Cargo.toml#L1-40
+[workspace]
+members = [
+  "projects/adcs",
+  "projects/orientation",
+  # "."  # можно включить корневой crate, если хочется собирать его тоже
+]
 ```
 
-If you're running out of memory (`flip-link` bails with an overflow error), you can decrease the size of the device memory buffer by setting the `DEFMT_RTT_BUFFER_SIZE` environment variable. The default value is 1024 bytes, and powers of two should be used for optimal performance:
+Пример `projects/adcs/Cargo.toml` (шаблон):
+```/dev/null/projects/adcs/Cargo.toml#L1-40
+[package]
+name = "adcs"
+version = "0.1.0"
+edition = "2021"
 
-```console
-$ DEFMT_RTT_BUFFER_SIZE=64 cargo rb hello
+[dependencies]
+embedina = { path = "../.." }   # ссылка на общую библиотеку
+stm32f3xx-hal = { version = "0.10", features = ["stm32f303xc", "rt"] }
+# остальные зависимости (nalgebra, sensors drivers и т.д.)
 ```
 
-### (8. Set `rust-analyzer.linkedProjects`)
+Пример `projects/adcs/src/main.rs` (шаблон):
+```/dev/null/projects/adcs/src/main.rs#L1-40
+#![no_main]
+#![no_std]
 
-If you are using [rust-analyzer] with VS Code for IDE-like features you can add following configuration to your `.vscode/settings.json` to make it work transparently across workspaces. Find the details of this option in the [RA docs].
+use embedina as _;
 
-```json
-{
-    "rust-analyzer.linkedProjects": [
-        "Cargo.toml",
-        "firmware/Cargo.toml",
-    ]
+#[cortex_m_rt::entry]
+fn main() -> ! {
+    defmt::println!("ADCS prototype starting");
+    embedina::exit()
 }
 ```
 
-[RA docs]: https://rust-analyzer.github.io/manual.html#configuration
-[rust-analyzer]: https://rust-analyzer.github.io/
-
-## Running tests
-
-The template comes configured for running unit tests and integration tests on the target.
-
-Unit tests reside in the library crate and can test private API; the initial set of unit tests are in `src/lib.rs`.
-`cargo test --lib` will run those unit tests.
-
-```console
-$ cargo test --lib
-   Compiling example v0.1.0 (./knurling-rs/example)
-    Finished `test` profile [optimized + debuginfo] target(s) in 0.15s
-     Running unittests src/lib.rs (target/thumbv6m-none-eabi/debug/deps/example-2b0d0e25d141bf57)
-      Erasing ✔ 100% [####################]   8.00 KiB @  15.99 KiB/s (took 1s)
-  Programming ✔ 100% [####################]   8.00 KiB @  13.33 KiB/s (took 1s)                                                                                                                        Finished in 1.10s
-(1/1) running `it_works`...
-all tests passed!
+4) Конкретные команды / маленький план миграции (если хочешь — я могу автоматизировать)
+- 1) Создать подпроект и перенести `src/adcs/main.rs` туда:
+```bash
+# из корня репозитория
+cargo new --bin projects/adcs --vcs none
+# затем скопируй содержимое src/adcs/main.rs -> projects/adcs/src/main.rs
+# в projects/adcs/Cargo.toml добавь dependency на embedina: embedina = { path = "../.." }
+# в корневом Cargo.toml удалите блок [[bin]] для adcs
 ```
 
-Integration tests reside in the `tests` directory; the initial set of integration tests are in `tests/integration.rs`.
-`cargo test --test integration` will run those integration tests.
-Note that the argument of the `--test` flag must match the name of the test file in the `tests` directory.
+- 2) Сделать корневой workspace (опционально):
+  - Заменить корневой `Cargo.toml` на workspace файл, либо добавить `[workspace]` в отдельный `Cargo.toml` и при необходимости оставить библиотеку в `.`.
 
-```console
-$ cargo test --test integration
-   Compiling example v0.1.0 (./knurling-rs/example)
-    Finished `test` profile [optimized + debuginfo] target(s) in 0.10s
-     Running tests/integration.rs (target/thumbv6m-none-eabi/debug/deps/integration-aaaff41151f6a722)
-      Erasing ✔ 100% [####################]   8.00 KiB @  16.03 KiB/s (took 0s)
-  Programming ✔ 100% [####################]   8.00 KiB @  13.19 KiB/s (took 1s)                                                                                                                        Finished in 1.11s
-(1/1) running `it_works`...
-all tests passed!
+- 3) Добавить `rust-toolchain.toml` чтобы фиксировать toolchain (рекомендуется):
+```toml
+# /home/lynx/dev/embedina/rust-toolchain.toml (пример)
+[toolchain]
+channel = "stable"
+components = ["rustfmt", "clippy"]
 ```
 
-Note that to add a new test file to the `tests` directory you also need to add a new `[[test]]` section to `Cargo.toml`.
+- 4) Положить шаблон `memory.x` в корень (если нужно) — например:
+```/dev/null/memory.x#L1-10
+MEMORY {
+  FLASH : ORIGIN = 0x08000000, LENGTH = 256K
+  RAM   : ORIGIN = 0x20000000, LENGTH = 40K
+}
+```
+(подставь точные значения для своего MCU)
 
-To run all the tests via `cargo test` the tests need to be explicitly disabled for all the existing binary targets.
-See `Cargo.toml` for details on how to do this.
+5) Практические рекомендации для повседневной работы
+- Малые быстрые эксперименты: используй `examples/` (команда `cargo run --example <name>`). Это удобно для небольших демо.
+- Средние/большие прототипы: делай подпроекты `projects/<name>` (каждый — отдельный crate), подключай `embedina` как path‑dependency.
+- Git: используй ветку для рефакторинга `embedina` (если ты меняешь API), подпроекты храни в main. Если прототип в итоге вырастет, можно вынести в отдельный репозиторий.
+- CI: настроить workflow, который собирает `--workspace` и проверяет `fmt`/`clippy`.
 
-## Support
+6) Если хочешь, я могу сейчас
+- создать `projects/adcs` и перенести `src/adcs/main.rs` туда (и правки в корневом `Cargo.toml`), или
+- сделать `Cargo.toml` workspace-шаблон, или
+- сгенерировать `rust-toolchain.toml` и `memory.x` шаблон под твой MCU.
 
-`app-template` is part of the [Knurling] project, [Ferrous Systems]' effort at
-improving tooling used to develop for embedded systems.
-
-If you think that our work is useful, consider sponsoring it via [GitHub
-Sponsors].
-
-## License
-
-Licensed under either of
-
-- Apache License, Version 2.0 ([LICENSE-APACHE](LICENSE-APACHE) or
-  http://www.apache.org/licenses/LICENSE-2.0)
-
-- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
-
-at your option.
-
-### Contribution
-
-Unless you explicitly state otherwise, any contribution intentionally submitted
-for inclusion in the work by you, as defined in the Apache-2.0 license, shall be
-licensed as above, without any additional terms or conditions.
-
-[Knurling]: https://knurling.ferrous-systems.com
-[Ferrous Systems]: https://ferrous-systems.com/
-[GitHub Sponsors]: https://github.com/sponsors/knurling-rs
+Скажи, какой из пунктов предпочитаешь: «скоро перенести adcs в подпроект», «сделать workspace», «только добавить rust-toolchain и memory.x» — и я внесу изменения/подкажу конкретные команды.
