@@ -1,7 +1,7 @@
 [package]
 # TODO(1) fix `authors` and `name` if you didn't use `cargo-generate`
 authors = ["asserthq <sanya2003ogorodov@gmail.com>"]
-name = "sandbox"
+name = "tooling-example"
 edition = "2024"
 version = "0.1.0"
 
@@ -13,11 +13,27 @@ version = "0.1.0"
 # test = false
 
 [[bin]]
-name = "blinky"
+name = "bitfield"
 test = false
 
 [[bin]]
-name = "led_roulette_1"
+name = "format"
+test = false
+
+[[bin]]
+name = "hello"
+test = false
+
+[[bin]]
+name = "levels"
+test = false
+
+[[bin]]
+name = "overflow"
+test = false
+
+[[bin]]
+name = "panic"
 test = false
 
 [lib]
@@ -37,7 +53,7 @@ defmt = "1.0"
 defmt-rtt = "1.0"
 panic-probe = { version = "1.0", features = ["print-defmt"] }
 semihosting = "0.1.20"
-embedded-hal = { version = "1.0.0", features = ["defmt-03"] }
+embedded-hal-bus = "0.3.0"
 # STM32
 stm32f3xx-hal = { version = "0.10.0", features = ["ld", "rt", "stm32f303xc"] }
 

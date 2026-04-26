@@ -1,9 +1,10 @@
 [workspace]
 members = [
+    "tooling-example",
     "sandbox",
     "embassy-sandbox",
 ]
-exclude = ["discovery"]
+exclude = ["bsp-sandbox"]
 resolver = "3"
 
 
